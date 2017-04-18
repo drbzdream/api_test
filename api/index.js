@@ -292,8 +292,30 @@ app.delete('/schedule/:id', (req, res) => {
 	schedule_rule.forge({ id }).destroy().then((user) => {
 		res.sendStatus(200)
 	}).catch((err) => {
-		res.sendStatus(403)
+		res.sendStatus(404)
 	})
+})
+
+app.patch('/schedule/:id', (req, res) => {
+	let { id } = req.params
+	schedule_rule.forge({ id }).fetch({ require: true }).then((user) => {
+		user.save({ room, description, day, starttime, endtime }).then((user) => {
+			res.json(user)
+		}).catch((err) => {
+			res.sendStatus(403)
+		})
+	}).catch(() => {
+		res.sendStatus(404)
+	})
+	// schedule_rule.forge({ id }).fetch({ require: true }).then((schedule) => {
+	// 	schedule.save({ room, description, day, starttime, endtime }).then((user) => {
+	// 		res.json(schedule)
+	// 	}).catch(() => {
+	// 		res.sendStatus(403)
+	// 	})
+	// }).catch(() => {
+	// 	res.sendStatus(404)
+	// })
 })
 
 app.get('/schedule/:id', (req, res) => {
@@ -331,7 +353,7 @@ app.delete('/energyrule/:id', (req, res) => {
 	energy_rule.forge({ id }).destroy().then((user) => {
 		res.sendStatus(200)
 	}).catch((err) => {
-		res.sendStatus(403)
+		res.sendStatus(404)
 	})
 })
 
