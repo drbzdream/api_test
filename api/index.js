@@ -7,7 +7,9 @@ import {
 	EnergyRealtime,
 	Temperature,
 	Room1,
-	Room2
+	Room2,
+	schedule_rule,
+	energy_rule
 } from './models'
 
 // MQTT
@@ -47,8 +49,8 @@ io.on('connect', function(socket) {
 			x.splice(10)
 			x.sort((a, b) => (a.id - b.id))
 			socket.emit('energy_realtime', x)
-			socket.emit('time_server', t_s)
-			socket.emit('count', count)
+			// socket.emit('time_server', t_s)
+			// socket.emit('count', count)
 		})
 
 		PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
@@ -259,18 +261,105 @@ app.get('/data', (req, res) => {
 // });
 
 
-app.get('/test', (req, res) => {
-	PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-		let y = [...collection.toJSON()]
-		y.splice(10)
-		y.sort((a, b) => (a.id - b.id))
-		if(collection == null){
+// app.get('/schedule', (req, res) => {
+// 	schedule_rule.forge().fetchAll().then((collection) => {
+// 		return collection.toJSON()
+// 	})
+// })
+
+app.get('/schedule', (req, res) => {
+	schedule_rule.forge().fetchAll().then((data) => {
+		if(data == null){
 			res.json({})
 		} else {
-			res.json(collection.toJSON())
+			res.json(data.toJSON())
 		}
 	})
 })
+
+app.post('/schedule', (req, res) => {
+	const { room, description, day, starttime, endtime } = req.body
+	console.log("body"+req.body)
+	schedule_rule.forge({ room, description, day, starttime, endtime }).save().then((schedule) => {
+		res.json(schedule)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.delete('/schedule/:id', (req, res) => {
+	let { id } = req.params
+	schedule_rule.forge({ id }).destroy().then((user) => {
+		res.sendStatus(200)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.get('/schedule/:id', (req, res) => {
+	let { id } = req.params
+	schedule_rule.forge({ id }).fetch().then((user) => {
+		res.json(user.toJSON())
+		res.sendStatus(200)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.get('/energyrule', (req, res) => {
+	energy_rule.forge().fetchAll().then((data) => {
+		if(data == null){
+			res.json({})
+		} else {
+			res.json(data.toJSON())
+		}
+	})
+})
+
+app.post('/energyrule', (req, res) => {
+	const { room, description, maxenergy } = req.body
+	console.log("body"+req.body)
+	energy_rule.forge({ room, description, maxenergy }).save().then((schedule) => {
+		res.json(schedule)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.delete('/energyrule/:id', (req, res) => {
+	let { id } = req.params
+	energy_rule.forge({ id }).destroy().then((user) => {
+		res.sendStatus(200)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.get('/energyrule/:id', (req, res) => {
+	let { id } = req.params
+	energy_rule.forge({ id }).fetch().then((user) => {
+		res.json(user.toJSON())
+		res.sendStatus(200)
+	}).catch((err) => {
+		res.sendStatus(403)
+	})
+})
+
+app.get('/test', (req, res) => {
+	PowerRealtime.forge().fetchAll().then((data) => {
+		if(data == null){
+			res.json({})
+		} else {
+			res.json(data.toJSON())
+		}
+	})
+})
+
+// PowerRealtime.forge({
+// 		// 	power_value: value_current,
+// 		// 	timestemp: timestemp
+// 		// }).save()
+
 
 // app.get('/light', (req, res) => {
 // 	let { room, day } = req.query
@@ -299,7 +388,7 @@ app.get('/test', (req, res) => {
 // })
 
 
-// MQTT
+// MQTT Important
 
 client.on('connect', () => {
 	client.subscribe('#')
@@ -316,13 +405,13 @@ client.on('message', (topic, message) => {
   // console.log("Topic: " + top)
   // console.log("Message: " + msg)
 
-  var receive_time = moment() // t_s
-  t_s = receive_time
-  var send_device_time = moment((JSON.parse(message)).T_g1)
-  var send_broker_time = moment((JSON.parse(message)).T_g2)
+  // var receive_time = moment() // t_s
+  // t_s = receive_time
+  // var send_device_time = moment((JSON.parse(message)).T_g1)
+  // var send_broker_time = moment((JSON.parse(message)).T_g2)
 
-  let timeDiff_device = moment.duration(send_broker_time - send_device_time, 'milliseconds')
-  let timeDiff_broker = moment.duration(receive_time - send_broker_time, 'milliseconds')
+  // let timeDiff_device = moment.duration(send_broker_time - send_device_time, 'milliseconds')
+  // let timeDiff_broker = moment.duration(receive_time - send_broker_time, 'milliseconds')
   // console.log("Send(device req&res): " + send_device_time.format('h:mm:ss:ms a'))
   // console.log("Send(broker req&res): " + receive_time.format('h:mm:ss:ms a'))
   // console.log("Receive: " + receive_time.format('h:mm:ss:ms a'))
