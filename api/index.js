@@ -14,14 +14,14 @@ import {
 
 // MQTT
 import mqtt from 'mqtt'
+import Moment from 'moment'
+import { extendMoment } from 'moment-range'
+
 import config from './config'
 
-
-
 const client = mqtt.connect(config.mqtt)
+const moment = extendMoment(Moment)
 
-
-import moment from 'moment'
 
 const app = express()
 app.use(express.static(__dirname))
@@ -298,6 +298,7 @@ app.delete('/schedule/:id', (req, res) => {
 
 app.patch('/schedule/:id', (req, res) => {
 	let { id } = req.params
+	const { room, description, day, starttime, endtime } = req.body
 	schedule_rule.forge({ id }).fetch({ require: true }).then((user) => {
 		user.save({ room, description, day, starttime, endtime }).then((user) => {
 			res.json(user)
@@ -307,15 +308,6 @@ app.patch('/schedule/:id', (req, res) => {
 	}).catch(() => {
 		res.sendStatus(404)
 	})
-	// schedule_rule.forge({ id }).fetch({ require: true }).then((schedule) => {
-	// 	schedule.save({ room, description, day, starttime, endtime }).then((user) => {
-	// 		res.json(schedule)
-	// 	}).catch(() => {
-	// 		res.sendStatus(403)
-	// 	})
-	// }).catch(() => {
-	// 	res.sendStatus(404)
-	// })
 })
 
 app.get('/schedule/:id', (req, res) => {
@@ -413,7 +405,7 @@ app.get('/test', (req, res) => {
 // MQTT Important
 
 client.on('connect', () => {
-	client.subscribe('#')
+	client.subscribe('/power/#')
 	// client.publish('/b', (new Date()).toString())
 })
  
@@ -422,23 +414,75 @@ client.on('message', (topic, message) => {
   let msg = message.toString()
   let top = topic.toString()
 
-  var info_energy = JSON.parse(message)
+  let check_schedule  = JSON.parse(message)
+  // console.log(check_schedule.time)
 
-  // console.log("Topic: " + top)
-  // console.log("Message: " + msg)
+  console.log("Topic: " + top)
+  console.log("Message: " + msg)
 
-  // var receive_time = moment() // t_s
-  // t_s = receive_time
-  // var send_device_time = moment((JSON.parse(message)).T_g1)
-  // var send_broker_time = moment((JSON.parse(message)).T_g2)
+  var split_top = top.split('/')
+  // console.log(split_top)
 
-  // let timeDiff_device = moment.duration(send_broker_time - send_device_time, 'milliseconds')
-  // let timeDiff_broker = moment.duration(receive_time - send_broker_time, 'milliseconds')
-  // console.log("Send(device req&res): " + send_device_time.format('h:mm:ss:ms a'))
-  // console.log("Send(broker req&res): " + receive_time.format('h:mm:ss:ms a'))
-  // console.log("Receive: " + receive_time.format('h:mm:ss:ms a'))
-  // console.log("Different(device to broker): " + timeDiff_device + ' ms')
-  // console.log("Different(broker to server): " + timeDiff_broker + ' ms')
+  // Check Notificaton
+  
+  // console.log( typeof moment(check_schedule.time).format('H') )
+  // console.log(moment('check_schedule.time').format('mm'))
+  // console.log(typeof moment(check_schedule.time).day())
+
+
+
+
+// 
+
+// let start = moment({ h: 13, m: 10 })
+// let end = moment({ h: 16, m: 10 })
+// const range = moment.range(start, end)
+// let current = moment()
+
+// let day = 'Wed'
+
+// if (current.format('ddd') === day) {
+// 	if (range.contains(current)) {
+// 		console.log('yes')
+// 	} else {
+// 		console.log('no')
+// 	}
+// }
+  let current = moment(check_schedule.time)
+  schedule_rule.forge({day: current.format('ddd')}).fetchAll().then((collection) => {
+  	let dataschedule = collection.toJSON()
+  	// console.log(dataschedule)
+  	let x = dataschedule.filter((data) => data.room === split_top[2])
+  	// console.log(x)
+  	// if(split_top[2] == dataschedule.room)
+  	x.map((rule) => {
+  		// console.log(rule)
+  		// console.log(typeof rule.starttime)
+  		var startDate = rule.starttime.split('.') 
+  		// console.log(startDate)
+  		var endDate = rule.endtime.split('.') 
+  		let start = moment({ h: startDate[0], m: startDate[1] })
+		let end = moment({ h: endDate[0], m: endDate[1] })
+		const range = moment.range(start, end)
+		
+		if (range.contains(current)) {
+			console.log('yes')
+			io.emit('noti', rule)
+		} else {
+			console.log('no')
+		}
+  	})
+
+  })
+
+  // console.log(dataschedule)
+
+
+
+
+ 
+
+
 })
 
 // client.on('connect', function () {

@@ -3,7 +3,7 @@ exports.up = function(knex, Promise) {
   return Promise.all([
     knex.schema.createTable('energy_rule', function(table){
       table.increments().primary()
-      table.string('room')
+      table.string('room').unique()
       table.string('description')
       table.decimal('maxenergy', null, 3)
       table.timestamp('created_at').defaultTo(knex.fn.now())
