@@ -414,7 +414,7 @@ client.on('message', (topic, message) => {
   let msg = message.toString()
   let top = topic.toString()
 
-  let check_schedule  = JSON.parse(message)
+  let check_noti  = JSON.parse(message)
   // console.log(check_schedule.time)
 
   console.log("Topic: " + top)
@@ -448,7 +448,7 @@ client.on('message', (topic, message) => {
 // 		console.log('no')
 // 	}
 // }
-  let current = moment(check_schedule.time)
+  let current = moment(check_noti.time)
   schedule_rule.forge({day: current.format('ddd')}).fetchAll().then((collection) => {
   	let dataschedule = collection.toJSON()
   	// console.log(dataschedule)
@@ -466,16 +466,30 @@ client.on('message', (topic, message) => {
 		const range = moment.range(start, end)
 		
 		if (range.contains(current)) {
-			console.log('yes')
+			console.log('yes-s')
 			io.emit('noti', rule)
 		} else {
-			console.log('no')
+			console.log('no-s')
 		}
   	})
 
   })
 
-  // console.log(dataschedule)
+  // energy rule 
+  // console.log(split_top[2])
+  energy_rule.forge({room: split_top[2]}).fetch().then((collection) => {
+  	let dataenergy = collection.toJSON()
+  	if(collection == null){
+			console.log('no-e')
+	} else {
+		if(check_noti.power <= dataenergy.maxenergy){
+			console.log('no-e')
+		} else {
+			console.log('yes-e')
+			console.log(dataenergy)
+		}
+	}
+  })
 
 
 
