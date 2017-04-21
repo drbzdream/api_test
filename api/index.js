@@ -9,7 +9,9 @@ import {
 	Room1,
 	Room2,
 	schedule_rule,
-	energy_rule
+	energy_rule,
+	notification_schedule_log,
+	notification_energy_log
 } from './models'
 
 // MQTT
@@ -85,7 +87,9 @@ app.get('/data', (req, res) => {
 						result.light = data2.toJSON()
 						Temperature.forge({ room: room, day: day }).fetch().then((data3) => {
 							if(data3 == null){
+								res.json({})
 							} else {
+								console.log(data3)
 								result.temperature = data3.toJSON()
 								res.json(result)
 							}
@@ -285,6 +289,7 @@ app.post('/schedule', (req, res) => {
 	}).catch((err) => {
 		res.sendStatus(403)
 	})
+
 })
 
 app.delete('/schedule/:id', (req, res) => {
@@ -345,7 +350,7 @@ app.delete('/energyrule/:id', (req, res) => {
 	energy_rule.forge({ id }).destroy().then((user) => {
 		res.sendStatus(200)
 	}).catch((err) => {
-		res.sendStatus(404)
+		res.sendStatus(403)
 	})
 })
 
@@ -360,7 +365,7 @@ app.get('/energyrule/:id', (req, res) => {
 })
 
 app.get('/test', (req, res) => {
-	PowerRealtime.forge().fetchAll().then((data) => {
+	notification_schedule_log.forge().fetchAll().then((data) => {
 		if(data == null){
 			res.json({})
 		} else {
@@ -368,6 +373,9 @@ app.get('/test', (req, res) => {
 		}
 	})
 })
+
+
+
 
 // PowerRealtime.forge({
 // 		// 	power_value: value_current,
@@ -414,81 +422,112 @@ client.on('message', (topic, message) => {
   let msg = message.toString()
   let top = topic.toString()
 
-  let check_noti  = JSON.parse(message)
-  // console.log(check_schedule.time)
+  // console.log("Topic: " + top)
+  // console.log("Message: " + msg)
+  
 
-  console.log("Topic: " + top)
-  console.log("Message: " + msg)
+  // Check Notificaton
 
   var split_top = top.split('/')
   // console.log(split_top)
-
-  // Check Notificaton
-  
-  // console.log( typeof moment(check_schedule.time).format('H') )
-  // console.log(moment('check_schedule.time').format('mm'))
-  // console.log(typeof moment(check_schedule.time).day())
-
-
-
-
-// 
-
-// let start = moment({ h: 13, m: 10 })
-// let end = moment({ h: 16, m: 10 })
-// const range = moment.range(start, end)
-// let current = moment()
-
-// let day = 'Wed'
-
-// if (current.format('ddd') === day) {
-// 	if (range.contains(current)) {
-// 		console.log('yes')
-// 	} else {
-// 		console.log('no')
-// 	}
-// }
+  let check_noti  = JSON.parse(message)
+  // console.log(check_schedule.time)
   let current = moment(check_noti.time)
-  schedule_rule.forge({day: current.format('ddd')}).fetchAll().then((collection) => {
-  	let dataschedule = collection.toJSON()
-  	// console.log(dataschedule)
-  	let x = dataschedule.filter((data) => data.room === split_top[2])
-  	// console.log(x)
-  	// if(split_top[2] == dataschedule.room)
-  	x.map((rule) => {
-  		// console.log(rule)
-  		// console.log(typeof rule.starttime)
-  		var startDate = rule.starttime.split('.') 
-  		// console.log(startDate)
-  		var endDate = rule.endtime.split('.') 
-  		let start = moment({ h: startDate[0], m: startDate[1] })
-		let end = moment({ h: endDate[0], m: endDate[1] })
-		const range = moment.range(start, end)
-		
-		if (range.contains(current)) {
-			console.log('yes-s')
-			io.emit('noti', rule)
-		} else {
-			console.log('no-s')
-		}
-  	})
 
-  })
+
+  // schedule
+  schedule_rule.forge().fetchAll().then((collection) => {
+	  	let dataschedule = collection.toJSON()
+	  	// console.log(dataschedule)
+	  	let x = dataschedule.filter((data) => data.room === split_top[2] && data.day === current.format('ddd'))
+	  	// console.log(x)
+	  	x.map((rule) => {
+	  		// console.log(rule)
+	  		var startDate = rule.starttime.split('.') 
+	  		// console.log(startDate)
+	  		var endDate = rule.endtime.split('.') 
+	  		let start = moment({ h: startDate[0], m: startDate[1] })
+			let end = moment({ h: endDate[0], m: endDate[1] })
+			const range = moment.range(start, end)
+			
+			if (range.contains(current)) {
+
+				notification_schedule_log.forge({day: rule.day, room: rule.room, starttime: rule.starttime, endtime: rule.endtime})
+				.orderBy('created_at','DESC').fetch().then((data) => {
+					// console.log('notis: '+ data)
+					if(data == null){
+						// console.log('No log')
+						notification_schedule_log.forge({
+							room: rule.room,
+							type: 'schedule',
+							description: rule.description,
+							day: rule.day,
+							starttime: rule.starttime,
+							endtime: rule.endtime
+						}).save()
+						io.emit('noti', rule)
+					} else {
+						// console.log('log data')
+						let datalog = data.toJSON()
+						let notilog_time = moment(datalog.created_at)
+					  	let timeDiff = moment.duration(current - notilog_time).asMinutes();
+					  	
+					  	if(timeDiff >= 5 ) {
+					  		io.emit('noti', rule)
+					  		// console.log('log update')
+					  		notification_schedule_log.forge({
+								room: datalog.room,
+								type: 'schedule',
+								description: datalog.description,
+								day: datalog.day,
+								starttime: datalog.starttime,
+								endtime: datalog.endtime
+							}).save()
+					  	} 
+					}
+				})
+			}
+	  	})
+	})
+
 
   // energy rule 
-  // console.log(split_top[2])
   energy_rule.forge({room: split_top[2]}).fetch().then((collection) => {
   	let dataenergy = collection.toJSON()
-  	if(collection == null){
-			console.log('no-e')
-	} else {
-		if(check_noti.power <= dataenergy.maxenergy){
-			console.log('no-e')
-		} else {
-			console.log('yes-e')
-			console.log(dataenergy)
+  	if(dataenergy != null){
+		if(check_noti.power >= dataenergy.maxenergy){
+			// io.emit('noti2', dataenergy)
+			notification_energy_log.forge({room: dataenergy.room}).fetch().then((data) => {
+				if(data == null) {
+					// console.log('save log')
+					notification_energy_log.forge({
+						room: dataenergy.room,
+						type: 'energy',
+						description: dataenergy.description,
+						maxenergy: dataenergy.maxenergy
+					}).save()
+
+					io.emit('noti2', dataenergy)
+				} else {
+					// console.log('check time')
+					let datalog = data.toJSON()
+					let notilog_time = moment(datalog.updated_at)
+					let timeDiff = moment.duration(current - notilog_time).asMinutes();
+					// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
+				 //  	console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
+				 //  	console.log(timeDiff)
+					if(timeDiff >= 5 ) {
+				  		io.emit('noti2', dataenergy)
+				  		console.log('log update')
+				  		notification_energy_log.forge({room: dataenergy.room}).fetch().then((update) => {
+				  			update.save()
+				  		})
+				  	} 
+				}
+			})	
 		}
 	}
+
   })
 
 
@@ -534,6 +573,53 @@ client.on('message', (topic, message) => {
   // console.log("Different: " + timeDiff + ' ms')
 
 // })
+
+// const nodemailer = require('nodemailer');
+
+// app.get('/mail', (req, res) => {
+// // create reusable transporter object using the default SMTP transport
+// 	let transporter = nodemailer.createTransport({
+// 	    service: 'gmail',
+// 	    auth: {
+// 	        user: 'kuenergy.iwing@gmail.com',
+// 	        pass: 'dream@iwing'
+// 	    }
+// 	});
+
+// 	// setup email data with unicode symbols
+// 	let mailOptions = {
+// 	    from: '"Fred Foo 👻" <kuenergy.iwing@gmail.com>', // sender address
+// 	    to: 'me.james123321@gmail.com', // list of receivers
+// 	    subject: 'Hello ✔', // Subject line
+// 	    text: 'Hello world ?', // plain text body
+// 	};
+
+// 	// send mail with defined transport object
+// 	transporter.sendMail(mailOptions, (error, info) => {
+// 	    if (error) {
+// 	    	res.send(error)
+// 	        console.log(error);
+// 	    }
+// 	    console.log('Message %s sent: %s', info.messageId, info.response);
+// 	    res.send(`Message ${info.messageId} sent: ${info.response}`)
+// 	});
+
+// })
+
+
+// // smtp.js
+// const {SMTPServer} = require('smtp-server');
+
+// const server = new SMTPServer({
+//     logger: true,
+//     onData(stream, session, callback){
+//         stream.pipe(process.stdout); // print message to console
+//         stream.on('end', callback);
+//     },
+// });
+
+// server.listen(25);
+
 
 
 
