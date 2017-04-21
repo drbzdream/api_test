@@ -319,7 +319,7 @@ app.get('/schedule/:id', (req, res) => {
 	let { id } = req.params
 	schedule_rule.forge({ id }).fetch().then((user) => {
 		res.json(user.toJSON())
-		res.sendStatus(200)
+		// res.sendStatus(200)
 	}).catch((err) => {
 		res.sendStatus(403)
 	})
@@ -372,7 +372,7 @@ app.get('/energyrule/:id', (req, res) => {
 	let { id } = req.params
 	energy_rule.forge({ id }).fetch().then((user) => {
 		res.json(user.toJSON())
-		res.sendStatus(200)
+		// res.sendStatus(200)
 	}).catch((err) => {
 		res.sendStatus(403)
 	})
@@ -485,7 +485,7 @@ client.on('message', (topic, message) => {
 						let datalog = data.toJSON()
 						let notilog_time = moment(datalog.created_at)
 					  	let timeDiff = moment.duration(current - notilog_time).asMinutes();
-					  	console.log('schedule: ' + timeDiff)
+					  	// console.log('schedule: ' + timeDiff)
 					  	if(timeDiff >= 5 ) {
 					  		io.emit('noti', rule)
 					  		// console.log('log update')
@@ -529,7 +529,7 @@ client.on('message', (topic, message) => {
 					let timeDiff = moment.duration(current - notilog_time).asMinutes();
 					// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
 				 //  	console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
-				  	console.log('energy: ' + timeDiff)
+				  	// console.log('energy: ' + timeDiff)
 					if(timeDiff >= 5 ) {
 				  		io.emit('noti2', dataenergy)
 				  		console.log('log update')
