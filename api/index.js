@@ -89,7 +89,7 @@ app.get('/data', (req, res) => {
 							if(data3 == null){
 								res.json({})
 							} else {
-								console.log(data3)
+								// console.log(data3)
 								result.temperature = data3.toJSON()
 								res.json(result)
 							}
@@ -283,7 +283,7 @@ app.get('/schedule', (req, res) => {
 
 app.post('/schedule', (req, res) => {
 	const { room, description, day, starttime, endtime } = req.body
-	console.log("body"+req.body)
+	// console.log("body"+req.body)
 	schedule_rule.forge({ room, description, day, starttime, endtime }).save().then((schedule) => {
 		res.json(schedule)
 	}).catch((err) => {
@@ -305,8 +305,8 @@ app.patch('/schedule/:id', (req, res) => {
 	let { id } = req.params
 	const { room, description, day, starttime, endtime } = req.body
 	schedule_rule.forge({ id }).fetch({ require: true }).then((user) => {
-		user.save({ room, description, day, starttime, endtime }).then((user) => {
-			res.json(user)
+		user.save({ room, description, day, starttime, endtime }).then((data) => {
+			res.json(data)
 		}).catch((err) => {
 			res.sendStatus(403)
 		})
@@ -337,7 +337,7 @@ app.get('/energyrule', (req, res) => {
 
 app.post('/energyrule', (req, res) => {
 	const { room, description, maxenergy } = req.body
-	console.log("body"+req.body)
+	// console.log("body"+req.body)
 	energy_rule.forge({ room, description, maxenergy }).save().then((schedule) => {
 		res.json(schedule)
 	}).catch((err) => {
@@ -351,6 +351,20 @@ app.delete('/energyrule/:id', (req, res) => {
 		res.sendStatus(200)
 	}).catch((err) => {
 		res.sendStatus(403)
+	})
+})
+
+app.patch('/energyrule/:id', (req, res) => {
+	let { id } = req.params
+	const { room, description, maxenergy  } = req.body
+	energy_rule.forge({ id }).fetch({ require: true }).then((user) => {
+		user.save({ description, maxenergy }).then((data) => {
+			res.json(data)
+		}).catch((err) => {
+			res.sendStatus(403)
+		})
+	}).catch(() => {
+		res.sendStatus(404)
 	})
 })
 
@@ -471,7 +485,7 @@ client.on('message', (topic, message) => {
 						let datalog = data.toJSON()
 						let notilog_time = moment(datalog.created_at)
 					  	let timeDiff = moment.duration(current - notilog_time).asMinutes();
-					  	
+					  	console.log('schedule: ' + timeDiff)
 					  	if(timeDiff >= 5 ) {
 					  		io.emit('noti', rule)
 					  		// console.log('log update')
@@ -515,7 +529,7 @@ client.on('message', (topic, message) => {
 					let timeDiff = moment.duration(current - notilog_time).asMinutes();
 					// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
 				 //  	console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
-				 //  	console.log(timeDiff)
+				  	console.log('energy: ' + timeDiff)
 					if(timeDiff >= 5 ) {
 				  		io.emit('noti2', dataenergy)
 				  		console.log('log update')
@@ -530,95 +544,43 @@ client.on('message', (topic, message) => {
 
   })
 
-
-
-
- 
-
-
 })
 
-// client.on('connect', function () {
-  // client.publish('dream/test', 'Success')
-  // console.log('send mesg')
-  // client.subscribe('#')
-// })
 
-
-// client.on('message', function (topic, message) {
-  // message is Buffer 
-  // let msg = message.toString()
-  // let top = topic.toString()
-
-  // var info_energy = JSON.parse(message)
-  // console.log("Topic: " + top)
-  // console.log("Message: " + msg)
-
-
-  // var receive_time = moment()
-  // var send_from_mqtt = moment((JSON.parse(message)).date_time)
-
-// 2017-03-12T14:39:56.081Z
-// 2017-03-12T18:39:56.081Z
-
-  // var receive_time = moment('2017-03-12T14:39:56.081Z')
-  // var send_from_mqtt = moment('2017-03-12T18:39:56.081Z')
-
-  // var send =  moment(send_json)
-
-  // var time_between = send.to(receive_time)
-  // let timeDiff = moment.duration(receive_time - send_from_mqtt, 'milliseconds')
-  // console.log("Send: " + send_from_mqtt.format('h:mm:ss:ms a'))
-  // console.log("Receive: " + receive_time.format('h:mm:ss:ms a'))
-  // console.log("Different: " + timeDiff + ' ms')
-
-// })
-
+// email notification
 // const nodemailer = require('nodemailer');
+// const xoauth2 = require('xoauth2');
 
-// app.get('/mail', (req, res) => {
-// // create reusable transporter object using the default SMTP transport
-// 	let transporter = nodemailer.createTransport({
-// 	    service: 'gmail',
-// 	    auth: {
-// 	        user: 'kuenergy.iwing@gmail.com',
-// 	        pass: 'dream@iwing'
-// 	    }
-// 	});
+// var transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//         xoauth2: xoauth2.createXOAuth2Generator({
+// 		    user: 'kuenergy.iwing@gmail.com',
+// 		    clientId: '151216395643-f8b18920h4qniufc2sbplojkig0c7jbm.apps.googleusercontent.com',
+// 		    clientSecret: 'jCxiJYl0QmkGJpIg3675X5_-',
+// 		    refreshToken: '1/DaQp4HNS2s2YQoJiYb4KNLNxlh9SCJMNd-s26t72UHs'
+//         })
+//     }
+// })
 
-// 	// setup email data with unicode symbols
-// 	let mailOptions = {
-// 	    from: '"Fred Foo 👻" <kuenergy.iwing@gmail.com>', // sender address
-// 	    to: 'me.james123321@gmail.com', // list of receivers
-// 	    subject: 'Hello ✔', // Subject line
-// 	    text: 'Hello world ?', // plain text body
-// 	};
+// var mailOptions = {
+//     from: 'Notification KUEnergy <kuenergy.iwing@gmail.com>',
+//     to: 'titivorada.c@gmail.com',
+//     subject: 'Email Test',
+//     text: 'you have a new email. :)'
+// }
 
-// 	// send mail with defined transport object
-// 	transporter.sendMail(mailOptions, (error, info) => {
-// 	    if (error) {
-// 	    	res.send(error)
-// 	        console.log(error);
-// 	    }
-// 	    console.log('Message %s sent: %s', info.messageId, info.response);
-// 	    res.send(`Message ${info.messageId} sent: ${info.response}`)
-// 	});
 
+// transporter.sendMail(mailOptions, function (err, res) {
+//     if(err){
+//         console.log('Error');
+//         console.log(err)
+//     } else {
+//         console.log('Email Sent');
+//     }
 // })
 
 
-// // smtp.js
-// const {SMTPServer} = require('smtp-server');
-
-// const server = new SMTPServer({
-//     logger: true,
-//     onData(stream, session, callback){
-//         stream.pipe(process.stdout); // print message to console
-//         stream.on('end', callback);
-//     },
-// });
-
-// server.listen(25);
 
 
 
