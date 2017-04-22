@@ -265,11 +265,6 @@ app.get('/data', (req, res) => {
 // });
 
 
-// app.get('/schedule', (req, res) => {
-// 	schedule_rule.forge().fetchAll().then((collection) => {
-// 		return collection.toJSON()
-// 	})
-// })
 
 app.get('/schedule', (req, res) => {
 	schedule_rule.forge().fetchAll().then((data) => {
