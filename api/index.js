@@ -48,28 +48,26 @@ const io = require('socket.io').listen(server)
 
 io.on('connect', function(socket) {
 	setInterval(() => {
-		// EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-		// 	let x = [...collection.toJSON()]
-		// 	x.splice(10)
-		// 	x.sort((a, b) => (a.id - b.id))
-		// 	socket.emit('energy_room1', x)
-		// 	// socket.emit('time_server', t_s)
-		// 	// socket.emit('count', count)
-		// })
+		EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let x = [...collection.toJSON()]
+			x.splice(10)
+			x.sort((a, b) => (a.id - b.id))
+			socket.emit('energy_room1', x)
+			// socket.emit('time_server', t_s)
+			// socket.emit('count', count)
+		})
 
-		// PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-		// 	let y = [...collection.toJSON()]
-		// 	y.splice(10)
-		// 	y.sort((a, b) => (a.id - b.id))
-		// 	socket.emit('energy_room2', y)
-		// })
+		PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let y = [...collection.toJSON()]
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			socket.emit('energy_room2', y)
+		})
 
-	},5000)
+
+	},10000)
 })
 
-// io.on('connect', function(socket) {
-// 	socket.emit('time_server', t_s)
-// })
 
 app.get('/data', (req, res) => {
 	let { room, day } = req.query
@@ -237,9 +235,11 @@ app.get('/summary', (req, res) => {
 					// console.log('Sum: ' + value)
 					let avr1 = value1/(keys.length+1)
 					let avr2 = value2/(keys.length+1)
+					let cost1 = value1*elec_cost
+					let cost2 = value2*elec_cost
 					sumEnergy = [
-						{name: 'Room202', value: value1, avr: avr1},
-						{name: 'Room203', value: value2, avr: avr2}
+						{name: 'Room202', cost: cost1, total: value1, avr: avr1},
+						{name: 'Room203', cost: cost2, total: value2, avr: avr2}
 					]
 
 					// const data = [{name: 'Room202', value: 12503.04}, {name: 'Room203', value: 8503.04}]
@@ -278,6 +278,63 @@ app.get('/notienergylog', (req, res) => {
 		}
 	})	
 })
+
+
+app.get('/realtimetest', (req, res) => {
+	let result = {}
+	schedule_rule.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
+		let dataschedule = data.toJSON()
+		let x = dataschedule.filter((data2) => data2.room === '202')
+		x.splice(2)
+		x.sort((a, b) => (a.id - b.id))
+		result.Room202 = x
+
+		schedule_rule.forge().orderBy('id', 'DESC').fetchAll().then((data3) => {
+			let dataschedule2 = data3.toJSON()
+			let x2 = dataschedule2.filter((data4) => data4.room === '203')
+			x2.splice(2)
+			x2.sort((c, d) => (c.id - d.id))
+			result.Room203 = x2
+			
+			if(result == null){
+				res.json({})
+			}else {
+				let r202 = { ...result.room202 }
+				let r203 = { ...result.room203 }
+				// delete r202['room']
+				// delete r202['day']
+				// delete r202['description']
+				// delete r202['id']
+				// delete r202['starttime']
+				// delete r202['created_at']
+				// delete r202['updated_at']
+
+				// delete r203['room']
+				// delete r203['day']
+				// delete r203['description']
+				// delete r203['id']
+				// delete r203['starttime']
+				// delete r203['created_at']
+				// delete r203['updated_at']
+
+				let name = Object.keys(r202)
+				let valueR202 = Object.values(r202)
+				let valueR203 = Object.values(r203)
+
+				let data = name.map((value, index) => ({
+					name: value,
+					Room202: valueR202[index],
+					Room203: valueR203[index]
+				}))
+				res.json(result)
+			
+			}
+			
+		})
+	})
+
+})
+
 
 // serial port //
 
@@ -391,7 +448,7 @@ app.get('/energyrule/:id', (req, res) => {
 })
 
 app.get('/test', (req, res) => {
-	notification_schedule_log.forge().fetchAll().then((data) => {
+	EnergyRealtime.forge().orderBy('id','DESC').fetchAll().then((data) => {
 		if(data == null){
 			res.json({})
 		} else {
@@ -401,39 +458,11 @@ app.get('/test', (req, res) => {
 })
 
 
-
-
 // PowerRealtime.forge({
 // 		// 	power_value: value_current,
 // 		// 	timestemp: timestemp
 // 		// }).save()
 
-
-// app.get('/light', (req, res) => {
-// 	let { room, day } = req.query
-// 	room = room || '202'
-// 	day = day || '2015-02-28'
-// 	Light.forge({ room: room, day: day }).fetch().then((data) => {
-// 		if(data == null){
-// 			res.json({})
-// 		} else {
-// 			res.json(data.toJSON())
-// 		}
-// 	})
-// })
-
-// app.get('/temperature', (req, res) => {
-// 	let { room, day } = req.query
-// 	room = room || '202'
-// 	day = day || '2015-02-28'
-// 	Temperature.forge({ room: room, day: day }).fetch().then((data) => {
-// 		if(data == null){
-// 			res.json({})
-// 		} else {
-// 			res.json(data.toJSON())
-// 		}
-// 	})
-// })
 
 
 // MQTT Important
@@ -540,7 +569,7 @@ client.on('message', (topic, message) => {
 					let notilog_time = moment(datalog.updated_at)
 					let timeDiff = moment.duration(current - notilog_time).asMinutes();
 					// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
-				 //  	console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
+				    // console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
 				  	// console.log('energy: ' + timeDiff)
 					if(timeDiff >= 5 ) {
 				  		io.emit('noti2', dataenergy)
