@@ -24,6 +24,8 @@ import config from './config'
 const client = mqtt.connect(config.mqtt)
 const moment = extendMoment(Moment)
 
+const elec_cost = 3.9639
+
 
 const app = express()
 app.use(express.static(__dirname))
@@ -50,7 +52,7 @@ io.on('connect', function(socket) {
 			let x = [...collection.toJSON()]
 			x.splice(10)
 			x.sort((a, b) => (a.id - b.id))
-			socket.emit('energy_realtime', x)
+			socket.emit('energy_room1', x)
 			// socket.emit('time_server', t_s)
 			// socket.emit('count', count)
 		})
@@ -59,7 +61,7 @@ io.on('connect', function(socket) {
 			let y = [...collection.toJSON()]
 			y.splice(10)
 			y.sort((a, b) => (a.id - b.id))
-			socket.emit('power_realtime', y)
+			socket.emit('energy_room2', y)
 		})
 
 	},5000)
@@ -124,6 +126,100 @@ app.get('/data', (req, res) => {
 	}
 })
 
+
+// const datatime2 = [
+//       {name: '07.00', Room202: 4000, Room203: 2400, amt: 2400},
+//       {name: '08.00', Room202: 3000, Room203: 1398, amt: 2210},
+//       {name: '09.00', Room202: 2000, Room203: 9800, amt: 2290},
+//       {name: '10.00', Room202: 2780, Room203: 3908, amt: 2000},
+//       {name: '11.00', Room202: 1890, Room203: 4800, amt: 2181},
+//       {name: '12.00', Room202: 2390, Room203: 3800, amt: 2500},
+//       {name: '13.00', Room202: 3490, Room203: 4300, amt: 2100},
+//       {name: '14.00', Room202: 4000, Room203: 2400, amt: 2400},
+//       {name: '15.00', Room202: 3000, Room203: 1398, amt: 2210},
+//       {name: '16.00', Room202: 2000, Room203: 9800, amt: 2290},
+//       {name: '17.00', Room202: 2780, Room203: 3908, amt: 2000},
+//       {name: '18.00', Room202: 1890, Room203: 4800, amt: 2181},
+//       {name: '19.00', Room202: 2390, Room203: 3800, amt: 2500},
+//       {name: '20.00', Room202: 3490, Room203: 4300, amt: 2100},
+// ]
+
+app.get('/energyshow', (req, res) => {
+	// let { rangetime } = req.body
+	// let { day } = req.body
+	let day = day || '2015-02-28'
+	let result = {}
+	let data = {}
+	Room1.forge({ day: day }).fetch().then((data1) => {
+		if(data == null){
+			console.log('err')
+		} else {
+			result.room202 = data1.toJSON()
+			Room2.forge({ day: day }).fetch().then((data2) => {
+				if(data == null){
+					console.log('err')
+				} else {
+					result.room203 = data2.toJSON()
+					// res.json(result)
+
+					let r202 = { ...result.room202 }
+					let r203 = { ...result.room203 }
+					delete r202['room']
+					delete r202['day']
+					delete r202['id']
+					delete r202['total']
+					delete r202['created_at']
+					delete r202['updated_at']
+					delete r203['room']
+					delete r203['day']
+					delete r203['id']
+					delete r203['total']
+					delete r203['created_at']
+					delete r203['updated_at']
+					let name = Object.keys(r202)
+					let valueR202 = Object.values(r202)
+					let valueR203 = Object.values(r203)
+
+					let data = name.map((value, index) => ({
+						name: value,
+						Room202: valueR202[index],
+						Room203: valueR203[index]
+					}))
+					res.json(data)
+
+				}
+			})
+
+		}
+	})	
+})
+
+
+app.get('/notischedulelog', (req, res) => {
+	notification_schedule_log.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
+		if(data == null){
+			console.log('err')
+		} else {
+			let x = [...data.toJSON()]
+			x.splice(5)
+			x.sort((a, b) => (a.id - b.id))
+			res.json(x)
+		}
+	})	
+})
+
+app.get('/notienergylog', (req, res) => {
+	notification_energy_log.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
+		if(data == null){
+			console.log('err')
+		} else {
+			let x = [...data.toJSON()]
+			x.splice(5)
+			x.sort((a, b) => (a.id - b.id))
+			res.json(x)
+		}
+	})	
+})
 
 // var SerialPort = require('serialport');
 
