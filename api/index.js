@@ -48,21 +48,21 @@ const io = require('socket.io').listen(server)
 
 io.on('connect', function(socket) {
 	setInterval(() => {
-		EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-			let x = [...collection.toJSON()]
-			x.splice(10)
-			x.sort((a, b) => (a.id - b.id))
-			socket.emit('energy_room1', x)
-			// socket.emit('time_server', t_s)
-			// socket.emit('count', count)
-		})
+		// EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+		// 	let x = [...collection.toJSON()]
+		// 	x.splice(10)
+		// 	x.sort((a, b) => (a.id - b.id))
+		// 	socket.emit('energy_room1', x)
+		// 	// socket.emit('time_server', t_s)
+		// 	// socket.emit('count', count)
+		// })
 
-		PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-			let y = [...collection.toJSON()]
-			y.splice(10)
-			y.sort((a, b) => (a.id - b.id))
-			socket.emit('energy_room2', y)
-		})
+		// PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+		// 	let y = [...collection.toJSON()]
+		// 	y.splice(10)
+		// 	y.sort((a, b) => (a.id - b.id))
+		// 	socket.emit('energy_room2', y)
+		// })
 
 	},5000)
 })
@@ -127,35 +127,18 @@ app.get('/data', (req, res) => {
 })
 
 
-// const datatime2 = [
-//       {name: '07.00', Room202: 4000, Room203: 2400, amt: 2400},
-//       {name: '08.00', Room202: 3000, Room203: 1398, amt: 2210},
-//       {name: '09.00', Room202: 2000, Room203: 9800, amt: 2290},
-//       {name: '10.00', Room202: 2780, Room203: 3908, amt: 2000},
-//       {name: '11.00', Room202: 1890, Room203: 4800, amt: 2181},
-//       {name: '12.00', Room202: 2390, Room203: 3800, amt: 2500},
-//       {name: '13.00', Room202: 3490, Room203: 4300, amt: 2100},
-//       {name: '14.00', Room202: 4000, Room203: 2400, amt: 2400},
-//       {name: '15.00', Room202: 3000, Room203: 1398, amt: 2210},
-//       {name: '16.00', Room202: 2000, Room203: 9800, amt: 2290},
-//       {name: '17.00', Room202: 2780, Room203: 3908, amt: 2000},
-//       {name: '18.00', Room202: 1890, Room203: 4800, amt: 2181},
-//       {name: '19.00', Room202: 2390, Room203: 3800, amt: 2500},
-//       {name: '20.00', Room202: 3490, Room203: 4300, amt: 2100},
-// ]
-
 app.get('/energyshow', (req, res) => {
 	// let { rangetime } = req.body
 	// let { day } = req.body
-	let day = day || '2015-02-28'
+	// let day = day || '2015-02-28'
 	let result = {}
 	let data = {}
-	Room1.forge({ day: day }).fetch().then((data1) => {
+	Room1.forge().orderBy('id', 'DESC').fetch().then((data1) => {
 		if(data == null){
 			console.log('err')
 		} else {
 			result.room202 = data1.toJSON()
-			Room2.forge({ day: day }).fetch().then((data2) => {
+			Room2.forge().orderBy('id', 'DESC').fetch().then((data2) => {
 				if(data == null){
 					console.log('err')
 				} else {
@@ -195,6 +178,81 @@ app.get('/energyshow', (req, res) => {
 })
 
 
+app.get('/summary', (req, res) => {
+	// let { rangetime } = req.body
+	// let { day } = req.body
+	// let day = day || '2015-02-28'
+	let result = {}
+	let data = {}
+	let sumEnergy = []
+	Room1.forge().orderBy('id', 'DESC').fetch().then((data1) => {
+		if(data == null){
+			console.log('err')
+		} else {
+			result.room202 = data1.toJSON()
+			Room2.forge().orderBy('id', 'DESC').orderBy('id', 'DESC').fetch().then((data2) => {
+				if(data == null){
+					console.log('err')
+				} else {
+					result.room203 = data2.toJSON()
+					// res.json(result)
+
+					let r202 = { ...result.room202 }
+					let r203 = { ...result.room203 }
+					delete r202['room']
+					delete r202['day']
+					delete r202['id']
+					delete r202['total']
+					delete r202['created_at']
+					delete r202['updated_at']
+					delete r203['room']
+					delete r203['day']
+					delete r203['id']
+					delete r203['total']
+					delete r203['created_at']
+					delete r203['updated_at']
+					let name = Object.keys(r202)
+					let valueR202 = Object.values(r202)
+					let valueR203 = Object.values(r203)
+
+					let data = name.map((value, index) => ({
+						name: value,
+						Room202: valueR202[index],
+						Room203: valueR203[index]
+					}))
+
+
+					var keys = Object.keys(data);
+					var valueSum = Object.values(data)
+					let value1 = 0
+					let value2 = 0
+					for (var i = 0; i < keys.length; i++)
+					{
+					    var key = keys[i];
+					    value1 += valueSum[i].Room202
+					    value2 += valueSum[i].Room203
+					    // console.log('key: ' + key)
+					    // console.log('valueR202: ' + value)
+					}
+					// console.log('Sum: ' + value)
+					let avr1 = value1/(keys.length+1)
+					let avr2 = value2/(keys.length+1)
+					sumEnergy = [
+						{name: 'Room202', value: value1, avr: avr1},
+						{name: 'Room203', value: value2, avr: avr2}
+					]
+
+					// const data = [{name: 'Room202', value: 12503.04}, {name: 'Room203', value: 8503.04}]
+					res.json(sumEnergy)
+
+				}
+			})
+
+		}
+	})	
+})
+
+
 app.get('/notischedulelog', (req, res) => {
 	notification_schedule_log.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
 		if(data == null){
@@ -221,144 +279,7 @@ app.get('/notienergylog', (req, res) => {
 	})	
 })
 
-// var SerialPort = require('serialport');
-
-// var port = new SerialPort('/dev/tty.cpj01-DevB', {
-// 	parser: SerialPort.parsers.byteLength(7),
-// 	baudRate: 9600
-// });
-
-
-
-// // connect to serial port 
-// port.on('open', function() {
-// 	// set ip for active power sensor 
-// 	port.write(new Buffer('\xB4\xC0\xA8\x01\x01\x00\x1E', 'ascii'), function(err) {
-//     	if (err) return console.log('Error on write: ', err.message)
-//     	// time = moment().format('h:mm:ss:ms a')
-//     	console.log('Set IP Success!!!');
-//     	console.log('---------------------------')
-//   })
-
-
-// });
-
-// function read_energy(){
-// 	t_g1 = moment()
-// 	count++;
-// 	// console.log("count:" + count)
-// 	port.write(new Buffer('\xB3\xC0\xA8\x01\x01\x00\x1D', 'ascii'))
-// }
-
-// function read_power(){
-// 	port.write(new Buffer('\xB2\xC0\xA8\x01\x01\x00\x1C', 'ascii'))
-// }
-
-// function read_current(){
-// 	port.write(new Buffer('\xB1\xC0\xA8\x01\x01\x00\x1B', 'ascii'))
-// }
-
-// function read_voltage(){
-// 	port.write(new Buffer('\xB0\xC0\xA8\x01\x01\x00\x1A', 'ascii'))
-// }
-
-// // open errors will be emitted as an error event
-// port.on('error', function(err) {
-//   console.log('Error: ', err.message);
-// })
-
-// port.on('data', function (data) {
-//   // console.log('Data: ' + data.toString('hex'))
-//   if(data.toString('hex') == 'a40000000000a4'){
-//   	setInterval(read_power, 1000)
-//   	setInterval(read_current, 4000)
-//   	setInterval(read_voltage, 5000)
-//   	setInterval(read_energy, 10000)
-//   }
-//   	var str = data.toString('hex')
-//   	var str_split = str.match(/.{1,2}/g)
-//   	// console.log(str_split)
-
-//   	// energy
-// 	if(str_split[0] == 'a3'){ 
-// 		var energy = str_split[1] + str_split[2] + str_split[3]
-// 		var value_energy = parseInt(energy, 16)
-// 		console.log('Count: ' + count +', energy_value: '+ value_energy + ' Wh')
-
-
-// 		// console.log(new Date())
-// 		//var time = new Date().getHours() + ':' + new Date().getMinutes() + ':' + new Date().getSeconds()
-// 		// var time = moment().format('h:mm:ss:ms a')
-// 		t_g2 = moment()
-// 		var info = {
-// 			value_energy: value_energy,
-// 			T_g1: t_g1,
-// 			T_g2: t_g2,
-// 			count: count
-// 		}
-// 		client.publish('test/res10000ms', JSON.stringify(info))
-
-// 		// EnergyRealtime.forge({
-// 		// 	energy_value: value_energy
-// 		// }).save()
-// 	}
-
-// 	// power
-// 	if(str_split[0] == 'a2'){
-// 		var power = str_split[1] + str_split[2]
-// 		var value_power = parseInt(power, 16)
-// 		console.log(value_power + ' W')
-
-		
-// 		EnergyRealtime.forge({
-// 			energy_value: value_power
-// 		}).save()
-
-// 	}
-
-// 	// current
-// 	if(str_split[0] == 'a1'){
-// 		var current1 = str_split[2]
-// 		var current2 = str_split[3]
-// 		var value_ctemp1 = parseInt(current1, 16)
-// 		var value_ctemp2 = parseInt(current2, 16)
-// 		if(value_ctemp2 < 10){
-// 			value_ctemp2 = value_ctemp2/10
-// 		}else if(value_ctemp2 < 100){
-// 			value_ctemp2 = value_ctemp2/100
-// 		}else{
-// 			value_ctemp2 = value_ctemp2/1000
-// 		}
-// 		var value_current = value_ctemp1 + value_ctemp2
-// 		console.log(value_current + ' A')
-
-// 		var timestemp = moment().format("hh:mm:ss")
-
-// 		// PowerRealtime.forge({
-// 		// 	power_value: value_current,
-// 		// 	timestemp: timestemp
-// 		// }).save()
-// 	}
-
-// 	// voltage
-// 	if(str_split[0] == 'a0'){
-// 		var voltage1 = str_split[1] + str_split[2]
-// 		var voltage2 = str_split[3]
-// 		var value_vtemp1 = parseInt(voltage1, 16)
-// 		var value_vtemp2 = parseInt(voltage2, 16)
-// 		if(value_vtemp2 < 10){
-// 			value_vtemp2 = value_vtemp2/10
-// 		}else if(value_ctemp2 < 100){
-// 			value_vtemp2 = value_vtemp2/100
-// 		}else{
-// 			value_vtemp2 = value_vtemp2/1000
-// 		}
-// 		var value_voltage = value_vtemp1 + value_vtemp2
-// 		console.log(value_voltage + ' V')
-
-// 	}
-
-// });
+// serial port //
 
 
 
