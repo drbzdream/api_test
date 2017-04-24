@@ -1,3 +1,8 @@
+import mqtt from 'mqtt'
+import config from './config'
+
+const client = mqtt.connect(config.mqtt)
+
 var SerialPort = require('serialport');
 
 var port = new SerialPort('/dev/tty.cpj01-DevB', {
@@ -5,7 +10,7 @@ var port = new SerialPort('/dev/tty.cpj01-DevB', {
 	baudRate: 9600
 });
 
-
+let info = {}
 
 // connect to serial port 
 port.on('open', function() {
@@ -21,8 +26,6 @@ port.on('open', function() {
 });
 
 function read_energy(){
-	t_g1 = moment()
-	count++;
 	// console.log("count:" + count)
 	port.write(new Buffer('\xB3\xC0\xA8\x01\x01\x00\x1D', 'ascii'))
 }
@@ -60,20 +63,19 @@ port.on('data', function (data) {
 	if(str_split[0] == 'a3'){ 
 		var energy = str_split[1] + str_split[2] + str_split[3]
 		var value_energy = parseInt(energy, 16)
-		console.log('Count: ' + count +', energy_value: '+ value_energy + ' Wh')
+		// console.log('Count: ' + count +', energy_value: '+ value_energy + ' Wh')
 
 
 		// console.log(new Date())
 		//var time = new Date().getHours() + ':' + new Date().getMinutes() + ':' + new Date().getSeconds()
 		// var time = moment().format('h:mm:ss:ms a')
-		t_g2 = moment()
-		var info = {
-			value_energy: value_energy,
-			T_g1: t_g1,
-			T_g2: t_g2,
-			count: count
+
+		info = {
+			data_value: value_energy,
+			time: new Date()
 		}
-		client.publish('test/res10000ms', JSON.stringify(info))
+
+		client.publish('power/202', JSON.stringify(info))
 
 		// EnergyRealtime.forge({
 		// 	energy_value: value_energy
@@ -87,9 +89,9 @@ port.on('data', function (data) {
 		console.log(value_power + ' W')
 
 		
-		EnergyRealtime.forge({
-			energy_value: value_power
-		}).save()
+		// EnergyRealtime.forge({
+		// 	energy_value: value_power
+		// }).save()
 
 	}
 
@@ -109,7 +111,6 @@ port.on('data', function (data) {
 		var value_current = value_ctemp1 + value_ctemp2
 		console.log(value_current + ' A')
 
-		var timestemp = moment().format("hh:mm:ss")
 
 		// PowerRealtime.forge({
 		// 	power_value: value_current,

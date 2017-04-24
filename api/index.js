@@ -11,7 +11,8 @@ import {
 	schedule_rule,
 	energy_rule,
 	notification_schedule_log,
-	notification_energy_log
+	notification_energy_log,
+	DataRealtime
 } from './models'
 
 // MQTT
@@ -46,26 +47,29 @@ const server = app.listen(PORT, () => {
 const io = require('socket.io').listen(server)
 
 
-io.on('connect', function(socket) {
+io.on('connnect', function(socket) {
 	setInterval(() => {
-		EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-			let x = [...collection.toJSON()]
-			x.splice(10)
-			x.sort((a, b) => (a.id - b.id))
-			socket.emit('energy_room1', x)
-			// socket.emit('time_server', t_s)
-			// socket.emit('count', count)
-		})
+		
+		// EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+		// 	let x = [...collection.toJSON()]
+		// 	x.splice(10)
+		// 	x.sort((a, b) => (a.id - b.id))
+		// 	socket.emit('energy_room1', x)
+		// 	// socket.emit('time_server', t_s)
+		// 	// socket.emit('count', count)
+		// })
 
-		PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-			let y = [...collection.toJSON()]
-			y.splice(10)
-			y.sort((a, b) => (a.id - b.id))
-			socket.emit('energy_room2', y)
-		})
-
-
-	},10000)
+		// DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+		// 	let dataschedule = collection.toJSON()
+		// 	let y = dataschedule.filter((data2) => data2.room === '202')
+		// 	// x.splice(2)
+		// 	// x.sort((a, b) => (a.id - b.id))
+		// 	y = [...collection.toJSON()]
+		// 	y.splice(10)
+		// 	y.sort((a, b) => (a.id - b.id))
+		// 	socket.emit('energy_room202', y)
+		// })
+	},5000)
 })
 
 
@@ -238,8 +242,8 @@ app.get('/summary', (req, res) => {
 					let cost1 = value1*elec_cost
 					let cost2 = value2*elec_cost
 					sumEnergy = [
-						{name: 'Room202', cost: cost1, total: value1, avr: avr1},
-						{name: 'Room203', cost: cost2, total: value2, avr: avr2}
+						{name: 'Room202', value: cost1, total: value1, avr: avr1},
+						{name: 'Room203', value: cost2, total: value2, avr: avr2}
 					]
 
 					// const data = [{name: 'Room202', value: 12503.04}, {name: 'Room203', value: 8503.04}]
@@ -280,6 +284,46 @@ app.get('/notienergylog', (req, res) => {
 })
 
 
+app.get('/realtimedata1', (req, res) => {
+	DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let dataschedule = collection.toJSON()
+			let y = dataschedule.filter((data2) => data2.room === '202')
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			res.json(y)
+		})
+})
+
+app.get('/realtimedata2', (req, res) => {
+	let result = {}
+	DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let dataschedule1 = collection.toJSON()
+			let y = dataschedule1.filter((data) => data.room === '202')
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			result.Room202 = y
+			// res.json(y)
+			DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection2) => {
+				let dataschedule2 = collection2.toJSON()
+				let z = dataschedule2.filter((data2) => data2.room === '203')
+				z.splice(10)
+				z.sort((a, b) => (a.id - b.id))
+				// res.json(z)
+				result.Room203 = z
+				// res.json(result)
+				let room202 = result.Room202
+				let room203 = result.Room203
+				let data = room202.map((value, index) => ({
+					name: value.created_at,
+					Room202: value.data_value,
+					Room203: room203[index].data_value
+				}))
+				// console.log(data)
+				res.json(data)
+			})
+		})
+})
+
 app.get('/realtimetest', (req, res) => {
 	let result = {}
 	schedule_rule.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
@@ -299,40 +343,62 @@ app.get('/realtimetest', (req, res) => {
 			if(result == null){
 				res.json({})
 			}else {
-				let r202 = { ...result.room202 }
-				let r203 = { ...result.room203 }
-				// delete r202['room']
-				// delete r202['day']
-				// delete r202['description']
-				// delete r202['id']
-				// delete r202['starttime']
-				// delete r202['created_at']
-				// delete r202['updated_at']
+				let tmp = {
+					'Room202': [
+						{
+							'id': 9,
+							'room': '202',
+							'energy_value': '10',
+							'created_at': '2017-04-21T17:20:36.000Z',
+							'updated_at': '2017-04-21T17:54:26.000Z'
+						},
+						{
+							'id': 12,
+							'room': '202',
+							'energy_value': '20',
+							'created_at': '2017-04-23T04:43:40.000Z',
+							'updated_at': '2017-04-23T04:43:40.000Z'
+						}
+					],
+					'Room203': [
+						{
+							'id': 13,
+							'room': '203',
+							'energy_value': '30',
+							'created_at': '2017-04-23T04:44:40.000Z',
+							'updated_at': '2017-04-23T04:44:40.000Z'
+						},
+						{
+							'id': 14,
+							'room': '203',
+							'energy_value': '40',
+							'created_at': '2017-04-23T11:12:12.000Z',
+							'updated_at': '2017-04-23T11:12:12.000Z'
+						}
+					]
+				}
 
-				// delete r203['room']
-				// delete r203['day']
-				// delete r203['description']
-				// delete r203['id']
-				// delete r203['starttime']
-				// delete r203['created_at']
-				// delete r203['updated_at']
-
-				let name = Object.keys(r202)
-				let valueR202 = Object.values(r202)
-				let valueR203 = Object.values(r203)
-
-				let data = name.map((value, index) => ({
-					name: value,
-					Room202: valueR202[index],
-					Room203: valueR203[index]
+				let room202 = tmp.Room202
+				let room203 = tmp.Room203
+				let data = room202.map((value, index) => ({
+					name: value.created_at,
+					Room202: value.energy_value,
+					Room203: room203[index].energy_value
 				}))
-				res.json(result)
+				// console.log(data)
+				res.json(data)
+				// res.json(result)
 			
 			}
 			
 		})
 	})
 
+})
+
+
+app.get('/testdata', (req, res) => {
+	res.json({})
 })
 
 
@@ -511,7 +577,7 @@ client.on('message', (topic, message) => {
 				.orderBy('created_at','DESC').fetch().then((data) => {
 					// console.log('notis: '+ data)
 					if(data == null){
-						// console.log('No log')
+						// console.log('No data in log')
 						notification_schedule_log.forge({
 							room: rule.room,
 							type: 'schedule',
@@ -522,7 +588,7 @@ client.on('message', (topic, message) => {
 						}).save()
 						io.emit('noti', rule)
 					} else {
-						// console.log('log data')
+						console.log('Have data in log data')
 						let datalog = data.toJSON()
 						let notilog_time = moment(datalog.created_at)
 					  	let timeDiff = moment.duration(current - notilog_time).asMinutes();
