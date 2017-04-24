@@ -1,7 +1,7 @@
 
 exports.up = function(knex, Promise) {
   return Promise.all([
-    knex.schema.createTable('temperature', function(table){
+    knex.schema.createTable('lightDB', function(table){
       table.increments().primary()
       table.string('room')
       table.string('day')
@@ -29,7 +29,6 @@ exports.up = function(knex, Promise) {
       table.decimal('22:00', null, 3)
       table.decimal('23:00', null, 3)
       table.decimal('0:00', null, 3)
-      table.decimal('total', null, 3)
       table.timestamp('created_at').defaultTo(knex.fn.now())
       table.timestamp('updated_at').defaultTo(knex.fn.now())
     })
@@ -38,6 +37,6 @@ exports.up = function(knex, Promise) {
 
 exports.down = function(knex, Promise) {
 	return Promise.all([
-		knex.schema.dropTable('temperature')
+		knex.schema.dropTable('lightDB')
 	])
 };
