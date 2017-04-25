@@ -21,9 +21,11 @@ import Moment from 'moment'
 import { extendMoment } from 'moment-range'
 
 import config from './config'
+import configtemp from './configtemp'
 
 const client = mqtt.connect(config.mqtt)
 const moment = extendMoment(Moment)
+const clienttemp = mqtt.connect(configtemp.mqtt)
 
 const elec_cost = 3.9639
 
@@ -46,30 +48,54 @@ const server = app.listen(PORT, () => {
 
 const io = require('socket.io').listen(server)
 
-
-io.on('connnect', function(socket) {
+io.on('connect', function(socket) {
 	setInterval(() => {
 		
-		// EnergyRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-		// 	let x = [...collection.toJSON()]
-		// 	x.splice(10)
-		// 	x.sort((a, b) => (a.id - b.id))
-		// 	socket.emit('energy_room1', x)
-		// 	// socket.emit('time_server', t_s)
-		// 	// socket.emit('count', count)
-		// })
+		PowerRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let x = collection.toJSON()
+			x.splice(10)
+			x.sort((a, b) => (a.id - b.id))
+			socket.emit('datap', x)
+		})
 
-		// DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
-		// 	let dataschedule = collection.toJSON()
-		// 	let y = dataschedule.filter((data2) => data2.room === '202')
-		// 	// x.splice(2)
-		// 	// x.sort((a, b) => (a.id - b.id))
-		// 	y = [...collection.toJSON()]
-		// 	y.splice(10)
-		// 	y.sort((a, b) => (a.id - b.id))
-		// 	socket.emit('energy_room202', y)
-		// })
-	},5000)
+		DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let dataschedule = collection.toJSON()
+			let y = dataschedule.filter((data2) => data2.room === '202')
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			socket.emit('datae', y)
+		})
+
+		//  Sensor 2 device
+		let result = {}
+		DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let dataschedule1 = collection.toJSON()
+			let y = dataschedule1.filter((data) => data.room === '202')
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			result.Room202 = y
+			// res.json(y)
+			DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection2) => {
+				let dataschedule2 = collection2.toJSON()
+				let z = dataschedule2.filter((data2) => data2.room === '203')
+				z.splice(10)
+				z.sort((a, b) => (a.id - b.id))
+				// res.json(z)
+				result.Room203 = z
+				// res.json(result)
+				let room202 = result.Room202
+				let room203 = result.Room203
+				let data = room202.map((value, index) => ({
+					name: value.created_at,
+					Room202: value.data_value,
+					Room203: room203[index].data_value
+				}))
+				// console.log(data)
+				socket.emit('realtime2d', data)
+			})
+		})
+
+	},2000)
 })
 
 
@@ -132,9 +158,10 @@ app.get('/data', (req, res) => {
 app.get('/energyshow', (req, res) => {
 	// let { rangetime } = req.body
 	// let { day } = req.body
-	// let day = day || '2015-02-28'
+	// let day = day || '2015-02-14'
 	let result = {}
 	let data = {}
+
 	Room1.forge().orderBy('id', 'DESC').fetch().then((data1) => {
 		if(data == null){
 			console.log('err')
@@ -152,13 +179,13 @@ app.get('/energyshow', (req, res) => {
 					delete r202['room']
 					delete r202['day']
 					delete r202['id']
-					delete r202['total']
+					// delete r202['total']
 					delete r202['created_at']
 					delete r202['updated_at']
 					delete r203['room']
 					delete r203['day']
 					delete r203['id']
-					delete r203['total']
+					// delete r203['total']
 					delete r203['created_at']
 					delete r203['updated_at']
 					let name = Object.keys(r202)
@@ -183,7 +210,7 @@ app.get('/energyshow', (req, res) => {
 app.get('/summary', (req, res) => {
 	// let { rangetime } = req.body
 	// let { day } = req.body
-	// let day = day || '2015-02-28'
+	// let day = day || '2015-02-14'
 	let result = {}
 	let data = {}
 	let sumEnergy = []
@@ -248,6 +275,85 @@ app.get('/summary', (req, res) => {
 
 					// const data = [{name: 'Room202', value: 12503.04}, {name: 'Room203', value: 8503.04}]
 					res.json(sumEnergy)
+
+				}
+			})
+
+		}
+	})	
+})
+
+
+app.get('/summaryroom', (req, res) => {
+	let { day, room } = req.query
+	// let { day } = req.body
+	// console.log(day)
+	day = day || '2015-02-28'	
+	let result = {}
+	let data = {}
+	let sumEnergy = []
+	Room1.forge({ day: day }).fetch().then((data1) => {
+		if(data == null){
+			console.log('err')
+		} else {
+			result.room202 = data1.toJSON()
+			Room2.forge({ day: day }).fetch().then((data2) => {
+				if(data == null){
+					console.log('err')
+				} else {
+					result.room203 = data2.toJSON()
+					// res.json(result)
+
+					let r202 = { ...result.room202 }
+					let r203 = { ...result.room203 }
+					delete r202['room']
+					delete r202['day']
+					delete r202['id']
+					delete r202['total']
+					delete r202['created_at']
+					delete r202['updated_at']
+					delete r203['room']
+					delete r203['day']
+					delete r203['id']
+					delete r203['total']
+					delete r203['created_at']
+					delete r203['updated_at']
+					let name = Object.keys(r202)
+					let valueR202 = Object.values(r202)
+					let valueR203 = Object.values(r203)
+
+					let data = name.map((value, index) => ({
+						name: value,
+						Room202: valueR202[index],
+						Room203: valueR203[index]
+					}))
+
+
+					var keys = Object.keys(data);
+					var valueSum = Object.values(data)
+					let value1 = 0
+					let value2 = 0
+					for (var i = 0; i < keys.length; i++)
+					{
+					    var key = keys[i];
+					    value1 += valueSum[i].Room202
+					    value2 += valueSum[i].Room203
+					    // console.log('key: ' + key)
+					    // console.log('valueR202: ' + value)
+					}
+					// console.log('Sum: ' + value)
+					let avr1 = value1/(keys.length+1)
+					let avr2 = value2/(keys.length+1)
+					let cost1 = value1*elec_cost
+					let cost2 = value2*elec_cost
+					sumEnergy.R202 = {name: 'Room202', value: cost1.toFixed(2), total: value1.toFixed(2), avr: avr1.toFixed(2)}
+					sumEnergy.R203 = {name: 'Room203', value: cost2.toFixed(2), total: value2.toFixed(2), avr: avr2.toFixed(2)}
+					if(room == '202') {
+						res.json(sumEnergy.R202)
+					} else if(room == '203') {
+						res.json(sumEnergy.R203)
+					} 
+
 
 				}
 			})
@@ -338,63 +444,15 @@ app.get('/realtimetest', (req, res) => {
 			let x2 = dataschedule2.filter((data4) => data4.room === '203')
 			x2.splice(2)
 			x2.sort((c, d) => (c.id - d.id))
-			result.Room203 = x2
+			result.Room203 = x2	
+			res.json(result)
 			
-			if(result == null){
-				res.json({})
-			}else {
-				let tmp = {
-					'Room202': [
-						{
-							'id': 9,
-							'room': '202',
-							'energy_value': '10',
-							'created_at': '2017-04-21T17:20:36.000Z',
-							'updated_at': '2017-04-21T17:54:26.000Z'
-						},
-						{
-							'id': 12,
-							'room': '202',
-							'energy_value': '20',
-							'created_at': '2017-04-23T04:43:40.000Z',
-							'updated_at': '2017-04-23T04:43:40.000Z'
-						}
-					],
-					'Room203': [
-						{
-							'id': 13,
-							'room': '203',
-							'energy_value': '30',
-							'created_at': '2017-04-23T04:44:40.000Z',
-							'updated_at': '2017-04-23T04:44:40.000Z'
-						},
-						{
-							'id': 14,
-							'room': '203',
-							'energy_value': '40',
-							'created_at': '2017-04-23T11:12:12.000Z',
-							'updated_at': '2017-04-23T11:12:12.000Z'
-						}
-					]
-				}
-
-				let room202 = tmp.Room202
-				let room203 = tmp.Room203
-				let data = room202.map((value, index) => ({
-					name: value.created_at,
-					Room202: value.energy_value,
-					Room203: room203[index].energy_value
-				}))
-				// console.log(data)
-				res.json(data)
-				// res.json(result)
-			
-			}
+			})
 			
 		})
 	})
 
-})
+
 
 
 app.get('/testdata', (req, res) => {
@@ -534,8 +592,9 @@ app.get('/test', (req, res) => {
 // MQTT Important
 
 client.on('connect', () => {
-	client.subscribe('/power/#')
+	client.subscribe('#')
 	// client.publish('/b', (new Date()).toString())
+
 })
  
 client.on('message', (topic, message) => {
@@ -545,15 +604,24 @@ client.on('message', (topic, message) => {
 
   // console.log("Topic: " + top)
   // console.log("Message: " + msg)
-  
-
-  // Check Notificaton
-
   var split_top = top.split('/')
   // console.log(split_top)
   let check_noti  = JSON.parse(message)
   // console.log(check_schedule.time)
   let current = moment(check_noti.time)
+
+  // console.log('top: ' + split_top[1])
+
+  if(split_top[1] == 'energy') {
+  	// Check Notificaton
+  	let infoe = JSON.parse(msg);
+
+  	DataRealtime.forge({
+			room: split_top[2],
+			data_value: infoe.data_value,
+	}).save()
+
+  
 
 
   // schedule
@@ -651,7 +719,141 @@ client.on('message', (topic, message) => {
 
   })
 
+  } else if(split_top[1] == 'power') {
+  		let infop = JSON.parse(msg);
+
+  		PowerRealtime.forge({
+			timestemp: infop.time,
+			power_value: infop.data_value,
+		}).save()
+  } 
+  
+
+ //  // Check Notificaton
+
+ //  var split_top = top.split('/')
+ //  // console.log(split_top)
+ //  let check_noti  = JSON.parse(message)
+ //  // console.log(check_schedule.time)
+ //  let current = moment(check_noti.time)
+
+
+ //  // schedule
+ //  schedule_rule.forge().fetchAll().then((collection) => {
+	//   	let dataschedule = collection.toJSON()
+	//   	// console.log(dataschedule)
+	//   	let x = dataschedule.filter((data) => data.room === split_top[2] && data.day === current.format('ddd'))
+	//   	// console.log(x)
+	//   	x.map((rule) => {
+	//   		// console.log(rule)
+	//   		var startDate = rule.starttime.split('.') 
+	//   		// console.log(startDate)
+	//   		var endDate = rule.endtime.split('.') 
+	//   		let start = moment({ h: startDate[0], m: startDate[1] })
+	// 		let end = moment({ h: endDate[0], m: endDate[1] })
+	// 		const range = moment.range(start, end)
+			
+	// 		if (range.contains(current)) {
+
+	// 			notification_schedule_log.forge({day: rule.day, room: rule.room, starttime: rule.starttime, endtime: rule.endtime})
+	// 			.orderBy('created_at','DESC').fetch().then((data) => {
+	// 				// console.log('notis: '+ data)
+	// 				if(data == null){
+	// 					// console.log('No data in log')
+	// 					notification_schedule_log.forge({
+	// 						room: rule.room,
+	// 						type: 'schedule',
+	// 						description: rule.description,
+	// 						day: rule.day,
+	// 						starttime: rule.starttime,
+	// 						endtime: rule.endtime
+	// 					}).save()
+	// 					io.emit('noti', rule)
+	// 				} else {
+	// 					console.log('Have data in log data')
+	// 					let datalog = data.toJSON()
+	// 					let notilog_time = moment(datalog.created_at)
+	// 				  	let timeDiff = moment.duration(current - notilog_time).asMinutes();
+	// 				  	// console.log('schedule: ' + timeDiff)
+	// 				  	if(timeDiff >= 5 ) {
+	// 				  		io.emit('noti', rule)
+	// 				  		// console.log('log update')
+	// 				  		notification_schedule_log.forge({
+	// 							room: datalog.room,
+	// 							type: 'schedule',
+	// 							description: datalog.description,
+	// 							day: datalog.day,
+	// 							starttime: datalog.starttime,
+	// 							endtime: datalog.endtime
+	// 						}).save()
+	// 				  	} 
+	// 				}
+	// 			})
+	// 		}
+	//   	})
+	// })
+
+
+ //  // energy rule 
+ //  energy_rule.forge({room: split_top[2]}).fetch().then((collection) => {
+ //  	let dataenergy = collection.toJSON()
+ //  	if(dataenergy != null){
+	// 	if(check_noti.power >= dataenergy.maxenergy){
+	// 		// io.emit('noti2', dataenergy)
+	// 		notification_energy_log.forge({room: dataenergy.room}).fetch().then((data) => {
+	// 			if(data == null) {
+	// 				// console.log('save log')
+	// 				notification_energy_log.forge({
+	// 					room: dataenergy.room,
+	// 					type: 'energy',
+	// 					description: dataenergy.description,
+	// 					maxenergy: dataenergy.maxenergy
+	// 				}).save()
+
+	// 				io.emit('noti2', dataenergy)
+	// 			} else {
+	// 				// console.log('check time')
+	// 				let datalog = data.toJSON()
+	// 				let notilog_time = moment(datalog.updated_at)
+	// 				let timeDiff = moment.duration(current - notilog_time).asMinutes();
+	// 				// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
+	// 			    // console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
+	// 			  	// console.log('energy: ' + timeDiff)
+	// 				if(timeDiff >= 5 ) {
+	// 			  		io.emit('noti2', dataenergy)
+	// 			  		console.log('log update')
+	// 			  		notification_energy_log.forge({room: dataenergy.room}).fetch().then((update) => {
+	// 			  			update.save()
+	// 			  		})
+	// 			  	} 
+	// 			}
+	// 		})	
+	// 	}
+	// }
+
+ //  })
+
 })
+
+// clienttemp.on('connect', () => {
+// 	clienttemp.subscribe('/cpekuIoT/SENSOR/TEMP/temperature')
+// 	// client.publish('/b', (new Date()).toString())
+
+// })
+
+
+// clienttemp.on('message', (topic, message) => {
+// 	// message is Buffer 
+//   let msg = message.toString()
+//   let top = topic.toString()
+
+//   console.log('topic: ' + topic )
+//   console.log('topic: ' + msg )
+
+// })
+
+
+
 
 
 // email notification

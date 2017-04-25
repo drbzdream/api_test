@@ -10,7 +10,8 @@ var port = new SerialPort('/dev/tty.cpj01-DevB', {
 	baudRate: 9600
 });
 
-let info = {}
+let infopower = {}
+let infoenergy = {}
 
 // connect to serial port 
 port.on('open', function() {
@@ -50,10 +51,10 @@ port.on('error', function(err) {
 port.on('data', function (data) {
   // console.log('Data: ' + data.toString('hex'))
   if(data.toString('hex') == 'a40000000000a4'){
-  	setInterval(read_power, 1000)
-  	setInterval(read_current, 4000)
-  	setInterval(read_voltage, 5000)
-  	setInterval(read_energy, 10000)
+  	setInterval(read_power, 4000)
+  	// setInterval(read_current, 4000)
+  	// setInterval(read_voltage, 5000)
+  	setInterval(read_energy, 5000)
   }
   	var str = data.toString('hex')
   	var str_split = str.match(/.{1,2}/g)
@@ -63,6 +64,7 @@ port.on('data', function (data) {
 	if(str_split[0] == 'a3'){ 
 		var energy = str_split[1] + str_split[2] + str_split[3]
 		var value_energy = parseInt(energy, 16)
+		console.log(value_energy + 'Wh')
 		// console.log('Count: ' + count +', energy_value: '+ value_energy + ' Wh')
 
 
@@ -70,12 +72,12 @@ port.on('data', function (data) {
 		//var time = new Date().getHours() + ':' + new Date().getMinutes() + ':' + new Date().getSeconds()
 		// var time = moment().format('h:mm:ss:ms a')
 
-		info = {
+		infoenergy = {
 			data_value: value_energy,
 			time: new Date()
 		}
 
-		client.publish('power/202', JSON.stringify(info))
+		client.publish('/energy/202', JSON.stringify(infoenergy))
 
 		// EnergyRealtime.forge({
 		// 	energy_value: value_energy
@@ -88,7 +90,12 @@ port.on('data', function (data) {
 		var value_power = parseInt(power, 16)
 		console.log(value_power + ' W')
 
-		
+		infopower = {
+			data_value: value_power,
+			time: new Date()
+		}
+
+		client.publish('/power/202', JSON.stringify(infopower))
 		// EnergyRealtime.forge({
 		// 	energy_value: value_power
 		// }).save()
