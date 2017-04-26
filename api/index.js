@@ -12,7 +12,8 @@ import {
 	energy_rule,
 	notification_schedule_log,
 	notification_energy_log,
-	DataRealtime
+	DataRealtime,
+	DataRealtime2
 } from './models'
 
 // MQTT
@@ -68,14 +69,14 @@ io.on('connect', function(socket) {
 
 		//  Sensor 2 device
 		let result = {}
-		DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+		DataRealtime2.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
 			let dataschedule1 = collection.toJSON()
 			let y = dataschedule1.filter((data) => data.room === '202')
 			y.splice(10)
 			y.sort((a, b) => (a.id - b.id))
 			result.Room202 = y
 			// res.json(y)
-			DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((collection2) => {
+			DataRealtime2.forge().orderBy('id', 'DESC').fetchAll().then((collection2) => {
 				let dataschedule2 = collection2.toJSON()
 				let z = dataschedule2.filter((data2) => data2.room === '203')
 				z.splice(10)
@@ -95,7 +96,7 @@ io.on('connect', function(socket) {
 			})
 		})
 
-	},2000)
+	},1000)
 })
 
 
@@ -430,6 +431,36 @@ app.get('/realtimedata2', (req, res) => {
 		})
 })
 
+app.get('/realtimepower2', (req, res) => {
+	let result = {}
+	DataRealtime2.forge().orderBy('id', 'DESC').fetchAll().then((collection) => {
+			let dataschedule1 = collection.toJSON()
+			let y = dataschedule1.filter((data) => data.room === '202')
+			y.splice(10)
+			y.sort((a, b) => (a.id - b.id))
+			result.Room202 = y
+			// res.json(y)
+			DataRealtime2.forge().orderBy('id', 'DESC').fetchAll().then((collection2) => {
+				let dataschedule2 = collection2.toJSON()
+				let z = dataschedule2.filter((data2) => data2.room === '203')
+				z.splice(10)
+				z.sort((a, b) => (a.id - b.id))
+				// res.json(z)
+				result.Room203 = z
+				// res.json(result)
+				let room202 = result.Room202
+				let room203 = result.Room203
+				let data = room202.map((value, index) => ({
+					name: value.created_at,
+					Room202: value.data_value,
+					Room203: room203[index].data_value
+				}))
+				// console.log(data)
+				res.json(data)
+			})
+		})
+})
+
 app.get('/realtimetest', (req, res) => {
 	let result = {}
 	schedule_rule.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
@@ -722,9 +753,14 @@ client.on('message', (topic, message) => {
   } else if(split_top[1] == 'power') {
   		let infop = JSON.parse(msg);
 
-  		PowerRealtime.forge({
-			timestemp: infop.time,
-			power_value: infop.data_value,
+  // 		PowerRealtime.forge({
+		// 	timestemp: infop.time,
+		// 	power_value: infop.data_value,
+		// }).save()
+
+		DataRealtime2.forge({
+			room: split_top[2],
+			data_value: infop.data_value,
 		}).save()
   } 
   

@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "nodemon index.js --exec babel-node",
-    "sensor": "nodemon sensor.js --exec babel-node"
+    "sensor": "nodemon sensor.js --exec babel-node",
+    "device": "nodemon sensor2.js --exec babel-node"
   },
   "dependencies": {
     "babel-cli": "^6.23.0",
