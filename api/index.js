@@ -606,10 +606,179 @@ app.get('/powerfactor', (req, res) => {
 })
 
 
+// projection electric cost (3 month)
+app.get('/infoenergyuse/:id', (req, res) => {
+	let { id } = req.params
+	// const { room } = req.body
+	let room = 202
+
+	let limit
+	let init1, init2, init3
+	let result = []
+	let result1 = []
+	let result2 = []
+	let result3 = []
+	let sum = 0
+	let average = 0
+
+	let ch = 0
+
+	monthly_energy_rule.forge({ id }).fetch().then((collection) => {
+		let temp = collection.toJSON()
+		limit = temp.maxenergy
+		init1 = temp.init_energy
+		room = (temp.room).toString() 
+
+		DataRealtime.forge().orderBy('id', 'DESC').fetchAll().then((data) => {
+			let data1 = data.toJSON()
+			let y = data1.filter((data) => data.room === room)
+			y.map((rule) => {
+				// console.log('test: ' + moment(rule.created_at).month())
+				let timeDiff = moment.duration(moment().set('date', 1) - moment(rule.created_at)).asMonths()
+				// console.log(timeDiff) ค่าสูงสุดของเดือนก่อนหน้าเท่ากับค่า init ของเดือนต่อมา 
+				if(ch == 0 && 3 >= timeDiff && timeDiff > 2) {
+					ch = 1
+					init2 = rule.data_value
+					// console.log('init2: ' + init2)
+				}
+
+				if(2 >= timeDiff && timeDiff > 1) {
+					if(result1.length == 0){
+						result1.push(rule)
+						init3 = rule.data_value
+						// console.log('init3: ' + init3)
+					} else {
+						let check_day = moment(rule.created_at).format('MMMM Do YYYY')
+						let data_day = result1[result1.length - 1]
+						let saved_day = moment(data_day.created_at).format('MMMM Do YYYY')
+						if(check_day != saved_day) {
+							result1.push(rule)
+						}
+					}
+					 // ถ้าเป็นเดือนพค คือ เดือนมีนา
+
+				} else if(1 >= timeDiff && timeDiff > 0) {
+					// result2.push(rule)
+					if(result2.length == 0){
+						result2.push(rule)
+					} else {
+						let check_day = moment(rule.created_at).format('MMMM Do YYYY')
+						let data_day = result2[result2.length - 1]
+						let saved_day = moment(data_day.created_at).format('MMMM Do YYYY')
+						if(check_day != saved_day) {
+							result2.push(rule)
+		
+						}
+					}
+
+					// ถ้าเป็นเดือนพค คือ เดือนเมษา
+
+				} else if(0 >= timeDiff && timeDiff > -1) {
+					if(result3.length == 0){
+						result3.push(rule)
+					} else {
+						let check_day = moment(rule.created_at).format('MMMM Do YYYY')
+						// console.log('check_day: ' + check_day)
+						let data_day = result3[result3.length - 1]
+						let saved_day = moment(data_day.created_at).format('MMMM Do YYYY')
+						// console.log('save_day: ' + saved_day)
+						if(check_day != saved_day) {
+							result3.push(rule)
+
+							sum = sum + (data_day.data_value - rule.data_value)
+						}
+					}
+
+					// ถ้าเป็นเดือนพค คือ เดือนพค
+				}
+				average = sum/(result3.length - 1)
+			}) 
+
+			let data_1 = result1.map((value, index) => ({
+				id: value.id,
+				name: value.created_at,
+				energy: value.data_value - init2,
+				projection: value.data_value - init2,
+				max: limit
+			}))
+
+			let data_2 = result2.map((value, index) => ({
+				id: value.id,
+				name: value.created_at,
+				energy: value.data_value - init3,
+				projection: value.data_value - init3,
+				max: limit
+			}))
+
+
+			data_1.sort((a, b) => (a.id - b.id))
+			data_2.sort((a, b) => (a.id - b.id))
+			result3.sort((a, b) => (a.id - b.id))
+			
+
+			let latest_data = result3[result3.length - 1]
+			let range_month = moment.duration(moment(latest_data.created_at) - moment().set('date', 1)).asDays()
+			let start_dayset = moment(latest_data.created_at).add(1, 'day')
+			let end_dayset = moment(latest_data.created_at).endOf('month').add(1, 'day')
+			// console.log('1: ' +start_dayset)
+			// console.log('2: ' + end_dayset)
+			let day_add
+
+			while(start_dayset.format('MMMM Do YYYY') != end_dayset.format('MMMM Do YYYY')) {
+				day_add = start_dayset.format()
+				let data_add = {
+					id: 0,
+					data_value: result3[result3.length - 1].data_value + average,
+					created_at: day_add
+
+				}
+				result3.push(data_add)
+
+				// console.log(result3[result3.length - 1])
+				start_dayset = moment(start_dayset).add(1, 'day')
+				// console.log('3: ' + start_dayset)
+			}
+			
+			
+
+
+			let data_3 = result3.map((value, index) => ({
+				id: value.id,
+				name: value.created_at,
+				energy: value.data_value - init1,
+				projection: value.data_value - init1,
+				max: limit
+			}))
+
+
+
+			for (var i = 0; i < data_3.length; i++) {
+				if(data_3[i].id == 0){
+					data_3[i].energy = 0
+				}
+			}
+
+
+			result = (data_1.concat(data_2)).concat(data_3)
+			// result = data_3
+			
+			if(result == null){
+				res.json({})
+			} else {
+				res.json(result)
+			}
+		})
+
+
+	})
+	
+	
+})
+
 
 // test api database
 app.get('/test', (req, res) => {
-	EnergyRealtime.forge().orderBy('id','DESC').fetchAll().then((data) => {
+	DataRealtime.forge().orderBy('id','DESC').fetchAll().then((data) => {
 		if(data == null){
 			res.json({})
 		} else {
@@ -617,6 +786,9 @@ app.get('/test', (req, res) => {
 		}
 	})
 })
+
+
+
 
 
 
@@ -656,7 +828,7 @@ client.on('message', (topic, message) => {
 
   	DataRealtime.forge({
 			room: split_top[2],
-			data_value: infoe.data_value,
+			data_value: infoe.data_value/1000,
 	}).save()
 
   
@@ -723,16 +895,11 @@ client.on('message', (topic, message) => {
 	  	let dataenergy = collection.toJSON()
 	  	if(dataenergy != null){
 	  		if (dataenergy.init_energy == 0) {
-	  			// monthly_energy_rule.forge({
-						// 	room: dataenergy.room,
-						// 	init_enery: infoe.data_value,
-						// 	description: dataenergy.description,
-						// 	max_energy: dataenergy.max_energy
-						// }).save()
 
 	  			monthly_energy_rule.forge({room: dataenergy.room}).fetch().then((update) => {
 		  			update.save({ 
-						init_energy: infoe.data_value/1000
+						init_energy: infoe.data_value/1000,
+						updated_at: moment().set('date', 1)
 		  			})
 		  		})
 
@@ -749,7 +916,8 @@ client.on('message', (topic, message) => {
 							init_energy: infoe.data_value/1000,
 							description: dataenergy.description,
 							maxenergy: dataenergy.maxenergy,
-							percent_use: 0
+							percent_use: 0,
+							updated_at: moment().set('date', 1)
 			  			})
 			  		})
 	  			} else {
@@ -774,7 +942,7 @@ client.on('message', (topic, message) => {
 								// console.log('check time')
 								let datalog = data.toJSON()
 								let notilog_time = moment(datalog.updated_at)
-								let timeDiff = moment.duration(current - notilog_time).asMinutes();
+								let timeDiff = moment.duration(current - notilog_time).asMinutes()
 								// console.log('mqtt ' + current.format('MMMM Do YYYY, h:mm:ss a'))
 							    // console.log('noti ' + notilog_time.format('MMMM Do YYYY, h:mm:ss a'))
 							  	// console.log('energy: ' + timeDiff)
