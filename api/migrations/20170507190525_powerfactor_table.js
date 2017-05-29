@@ -7,6 +7,7 @@ exports.up = function(knex, Promise) {
       table.string('description')
       table.decimal('powerfactor_value', null, 3)
       table.decimal('real_power', null, 3)
+      table.decimal('reactive_power', null, 3)
       table.decimal('voltage_value', null, 3)
       table.decimal('current_value', null, 3)
       table.timestamp('created_at').defaultTo(knex.fn.now())

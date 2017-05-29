@@ -685,13 +685,13 @@ app.get('/infoenergyuse/:id', (req, res) => {
 						if(check_day != saved_day) {
 							result3.push(rule)
 
-							sum = sum + (data_day.data_value - rule.data_value)
 						}
 					}
 
 					// ถ้าเป็นเดือนพค คือ เดือนพค
 				}
-				average = sum/(result3.length - 1)
+				sum = result3[result3.length - 1] - result3[0]
+				average = sum/(result3.length)
 			}) 
 
 			let data_1 = result1.map((value, index) => ({
@@ -1021,11 +1021,11 @@ client.on('message', (topic, message) => {
 
 
 		if(info_pf.real_power != 0 && info_pf.voltage_value != 0 && info_pf.current_value != 0) {
-			let reactive_power = (1.732*info_pf.voltage_value*info_pf.current_value)/1000 // kVA
-	    	let pf = (info_pf.real_power/1000)/reactive_power
+			let apparent_power = (1.732*info_pf.voltage_value*info_pf.current_value)/1000 // kVA
+	    	let pf = (info_pf.real_power/1000)/apparent_power
 
 	    	console.log('power = ' + info_pf.real_power + ', voltage = ' + info_pf.voltage_value + ', current = ' + info_pf.current_value)
-	    	console.log('PF:reactive_power = ' + reactive_power)
+	    	console.log('PF:apparent_power = ' + apparent_power)
 	    	console.log('PF:pf = ' + pf)
 
 
@@ -1038,7 +1038,8 @@ client.on('message', (topic, message) => {
 						powerfactor_value: pf,
 						real_power: info_pf.real_power/1000,
 						voltage_value: info_pf.voltage_value,
-						current_value: info_pf.current_value
+						current_value: info_pf.current_value,
+						apparent_power: apparent_power
 					}).save()
 
 	    		} else {
@@ -1046,7 +1047,8 @@ client.on('message', (topic, message) => {
 						powerfactor_value: pf,
 						real_power: info_pf.real_power/1000,
 						voltage_value: info_pf.voltage_value,
-						current_value: info_pf.current_value
+						current_value: info_pf.current_value,
+						apparent_power: apparent_power
 	  				})
 
 	    		}
